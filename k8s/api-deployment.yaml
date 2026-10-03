@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claimblitz-api
+  namespace: claimblitz
+  labels:
+    app: claimblitz-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: claimblitz-api
+  template:
+    metadata:
+      labels:
+        app: claimblitz-api
+    spec:
+      containers:
+        - name: api
+          image: claimblitz/api:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: postgres-dsn
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: redis-url
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: rabbitmq-url
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: gemini-api-key
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: pinecone-api-key
+            - name: JWT_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: jwt-secret-key
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: sentry-dsn
+                  optional: true
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"
+          readinessProbe:
+            httpGet:
+              path: /v2/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /v2/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: claimblitz-api
+  namespace: claimblitz
+spec:
+  selector:
+    app: claimblitz-api
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: claimblitz-api-hpa
+  namespace: claimblitz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: claimblitz-api
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

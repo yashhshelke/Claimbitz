@@ -1,0 +1,137 @@
+###############################################################################
+# ClaimBlitz Multi-Agent System — Local Development Stack
+#
+# Brings up:
+#   - postgres      (claim persistence, Alembic migrations)
+#   - redis         (blackboard working memory, Celery result backend)
+#   - rabbitmq      (Celery broker, agent event bus in production)
+#   - pinecone      (vector memory emulator for agent semantic recall)
+#   - api           (FastAPI app on port 8000)
+#   - worker        (Celery worker consuming from RabbitMQ)
+#
+# Usage:
+#   docker compose up -d
+#   docker compose logs -f api worker
+#
+# First run: migrations are applied automatically by the api container's
+# entrypoint (see backend/scripts/start.sh or the command override below).
+###############################################################################
+
+services:
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: claimblitz
+      POSTGRES_PASSWORD: claimblitz
+      POSTGRES_DB: claimblitz
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claimblitz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pinecone:
+    image: ghcr.io/pinecone-io/pinecone-local:latest
+    platform: linux/amd64
+    environment:
+      PORT: "5081"
+      PINECONE_HOST: localhost
+    ports:
+      - "5081-5090:5081-5090"
+
+  # ---------------------------------------------------------------------------
+  # Application
+  # ---------------------------------------------------------------------------
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: staging
+      POSTGRES_DSN: postgresql+asyncpg://claimblitz:claimblitz@postgres:5432/claimblitz
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PINECONE_USE_LOCAL: "true"
+      PINECONE_LOCAL_HOST: http://pinecone:5081
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      USE_OLLAMA_ONLY: ${USE_OLLAMA_ONLY:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    command: >
+      sh -c "
+        alembic upgrade head &&
+        uvicorn agentcore.api.app:app --host 0.0.0.0 --port 8000
+      "
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8000/v2/health'); assert r.status_code==200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      ENVIRONMENT: staging
+      POSTGRES_DSN: postgresql+asyncpg://claimblitz:claimblitz@postgres:5432/claimblitz
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      PINECONE_USE_LOCAL: "true"
+      PINECONE_LOCAL_HOST: http://pinecone:5081
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      USE_OLLAMA_ONLY: ${USE_OLLAMA_ONLY:-false}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A agentcore.worker worker
+      --loglevel=info --pool=solo
+      --queues=claims
+      --concurrency=1
+
+volumes:
+  pgdata:

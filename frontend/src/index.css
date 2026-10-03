@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/* =============================================================================
+   ClaimBitz Design System — warm copper, light-first enterprise claims console.
+
+   This file is the single source of truth for the visual language now shared by
+   the ported Lovable UI. Tokens are exposed to Tailwind v4 via @theme so
+   shadcn-style utilities (bg-primary, text-foreground, text-muted-foreground,
+   border-border, bg-surface-muted, bg-primary-subtle, bg-terminal, …) resolve
+   against the approved copper palette.
+
+   Legacy aliases (canvas / default / subtle / secondary / brand …) are retained
+   so pre-migration screens keep rendering until each is ported.
+   ============================================================================= */
+@theme {
+  /* ── Lovable / shadcn token set (primary source of truth) ── */
+  --color-background: #F5F5F3;
+  --color-foreground: #171717;
+
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #FAFAF8;
+
+  --color-card: #FFFFFF;
+  --color-card-foreground: #171717;
+  --color-popover: #FFFFFF;
+  --color-popover-foreground: #171717;
+
+  /* brand = copper */
+  --color-primary: #C76A2B;
+  --color-primary-hover: #A95720;
+  --color-primary-pressed: #8F431A;
+  --color-primary-subtle: #FFF3E8;
+  --color-primary-border: #F1C9A8;
+  --color-primary-foreground: #FFFFFF;
+
+  --color-secondary: #FAFAF8;
+  --color-secondary-foreground: #171717;
+
+  --color-muted: #FAFAF8;
+  --color-muted-foreground: #686868;
+  --color-subtle-foreground: #929292;
+
+  --color-accent: #FFF3E8;
+  --color-accent-foreground: #A95720;
+
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #FFFFFF;
+  --color-success: #16A34A;
+  --color-success-subtle: #ECFDF3;
+  --color-warning: #D97706;
+  --color-warning-subtle: #FFF7E6;
+  --color-info: #C76A2B;
+
+  --color-border: #E5E5E2;
+  --color-border-strong: #D6D6D2;
+  --color-input: #D6D6D2;
+  --color-ring: #C76A2B;
+
+  --color-terminal: #1A1917;
+  --color-terminal-foreground: oklch(0.9271 0.0075 260.73);
+  --color-terminal-muted: oklch(0.6 0.02 261);
+
+  /* ── Legacy aliases (existing primitives/pages) — same palette ── */
+  --color-canvas: #F5F5F3;
+  --color-elevated: #FFFFFF;
+  --color-default: #E5E5E2;      /* border-default */
+  --color-subtle: #EEEEEB;       /* bg-subtle */
+  --color-brand: #C76A2B;
+  --color-brand-hover: #A95720;
+  --color-brand-pressed: #8F431A;
+  --color-brand-subtle: #FFF3E8;
+  --color-brand-border: #F1C9A8;
+  --color-error: #DC2626;
+  --color-error-subtle: #FEF2F2;
+  --color-info-subtle: #FFF3E8;
+  --color-term-bg: #1A1917;
+  --color-term-border: #2A2926;
+
+  /* ── Radius scale (matches Lovable --radius: 0.625rem base) ── */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-full: 9999px;
+
+  /* ── Shadow scale (oklch to match Lovable exactly) ── */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-panel: 0 1px 2px oklch(0.2 0 0 / 0.05);
+  --shadow-elevated: 0 1px 2px oklch(0.2 0 0 / 0.06), 0 12px 28px -14px oklch(0.2 0 0 / 0.18);
+  --shadow-paper: 0 1px 1px oklch(0.2 0 0 / 0.06), 0 8px 24px -16px oklch(0.2 0 0 / 0.24);
+
+  /* ── Typography ── */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, Consolas, monospace;
+}
+
+/* ===== Base ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #F5F5F3;
+  color: #171717;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv11", "ss01";
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* ===== Focus visibility (accessibility) ===== */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ===== Component utilities ported from Lovable ===== */
+@utility panel {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-panel);
+}
+
+@utility eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+@utility text-hero {
+  font-size: clamp(2.5rem, 4.4vw, 3.9rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-weight: 600;
+}
+
+@utility story-link {
+  position: relative;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D6D6D1;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BEBEB8;
+  background-clip: content-box;
+}
+
+/* ===== Terminal log line (dark surface only) ===== */
+.log-line {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.cursor-blink::after {
+  content: '▊';
+  color: #C76A2B;
+  animation: blink-cursor 1s step-end infinite;
+}
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ===== Reduced motion: disable decorative motion, keep functional ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .cursor-blink::after {
+    animation: none;
+  }
+}

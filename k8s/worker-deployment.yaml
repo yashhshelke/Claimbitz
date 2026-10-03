@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: claimblitz-worker
+  namespace: claimblitz
+  labels:
+    app: claimblitz-worker
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: claimblitz-worker
+  template:
+    metadata:
+      labels:
+        app: claimblitz-worker
+    spec:
+      containers:
+        - name: worker
+          image: claimblitz/api:latest
+          command: ["celery", "-A", "agentcore.worker", "worker",
+                    "--loglevel=info", "--pool=solo", "--queues=claims",
+                    "--concurrency=1"]
+          env:
+            - name: ENVIRONMENT
+              value: "production"
+            - name: POSTGRES_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: postgres-dsn
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: redis-url
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: rabbitmq-url
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: gemini-api-key
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: claimblitz-secrets
+                  key: pinecone-api-key
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: claimblitz-worker-hpa
+  namespace: claimblitz
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: claimblitz-worker
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
