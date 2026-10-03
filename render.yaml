@@ -1,0 +1,38 @@
+# Render Blueprint — ClaimBitz FastAPI backend
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Deploys ONLY the backend/ directory as a Python web service.
+# The frontend is deployed separately on Vercel (see frontend/vercel.json).
+services:
+  - type: web
+    name: claimbitz-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      # Production runtime posture: production => debug resolves to false.
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      # Allowed frontend origin(s), comma-separated. Set to the deployed Vercel
+      # URL after the frontend is live, e.g. https://your-app.vercel.app
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      # Secrets below are NOT committed — set their values in the Render
+      # dashboard (Environment) or mark sync:false here. See backend/.env.example.
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: llama-3.1-8b-instant
+      - key: OPENAI_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: MONGODB_URL
+        sync: false
+      - key: MONGODB_DB_NAME
+        value: claimblitz

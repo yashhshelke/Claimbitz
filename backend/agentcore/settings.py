@@ -35,7 +35,19 @@ class AgentCoreSettings(BaseSettings):
 
     # -- General -----------------------------------------------------------
     environment: str = Field(default="development", description="development|staging|production")
-    debug: bool = Field(default=True)
+    # Raw DEBUG override. Leave unset to derive a safe value from `environment`
+    # (production => False, otherwise True). Read `debug` (the property) rather
+    # than this field so production never defaults to a debug-on state.
+    debug_override: bool | None = Field(default=None, alias="DEBUG")
+
+    # -- CORS -----------------------------------------------------------------
+    # Comma-separated list of allowed frontend origins. In production set this
+    # to the deployed frontend origin(s), e.g.
+    #   CORS_ALLOW_ORIGINS=https://your-app.vercel.app
+    # Development falls back to the common local Vite origins below. A literal
+    # "*" entry is intentionally ignored so credentialed wildcard CORS can
+    # never be configured by accident.
+    cors_allow_origins: str = Field(default="", alias="CORS_ALLOW_ORIGINS")
 
     # -- LLM providers --------------------------------------------------------
     # PRIMARY: OpenAI (ChatGPT) — set OPENAI_API_KEY in .env
@@ -103,6 +115,37 @@ class AgentCoreSettings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def debug(self) -> bool:
+        """Effective debug flag.
+
+        If DEBUG is set explicitly it wins; otherwise debug is on everywhere
+        except production. This guarantees production resolves to False even
+        when DEBUG is never provided.
+        """
+        if self.debug_override is not None:
+            return self.debug_override
+        return not self.is_production
+
+    # Default local frontend origins (Vite dev server). Used only when
+    # CORS_ALLOW_ORIGINS is not provided.
+    _DEV_CORS_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parsed CORS allowlist.
+
+        Splits CORS_ALLOW_ORIGINS on commas, trims whitespace, drops empty
+        entries, and ignores any literal "*" so a credentialed wildcard can
+        never be formed. When nothing valid is configured, falls back to the
+        local dev origins so development keeps working out of the box.
+        """
+        raw = [o.strip() for o in self.cors_allow_origins.split(",")]
+        origins = [o for o in raw if o and o != "*"]
+        if origins:
+            return origins
+        return list(self._DEV_CORS_ORIGINS)
 
 
 @lru_cache(maxsize=1)

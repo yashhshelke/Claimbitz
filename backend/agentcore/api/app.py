@@ -36,12 +36,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # CORS for frontend dev server
+    # CORS: explicit origin allowlist from settings (env-driven in production,
+    # local Vite origins in development). Credentials are disabled because the
+    # frontend calls the API without cookies/auth credentials — this also keeps
+    # us clear of the invalid wildcard-plus-credentials combination.
     from fastapi.middleware.cors import CORSMiddleware
+    from ..settings import get_settings
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
+        allow_origins=get_settings().cors_origins,
+        allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
     )

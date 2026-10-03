@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { CheckCircle2, FileText } from 'lucide-react'
 import { AgentTimeline } from '../claimbitz/AgentTimeline'
 import { AnimatedPercent, RiskRing } from '../claimbitz/RiskRing'
@@ -15,13 +15,20 @@ const STEP_MS = 850
  * A full page reload restarts the sequence.
  */
 export function WorkspacePreview() {
+  const reduceMotion = useReducedMotion()
   const [step, setStep] = useState(0) // 0..SHOWN-1 processing, SHOWN = complete
 
   useEffect(() => {
+    // Reduced motion: skip the stepped processing animation and show the
+    // completed claim state directly.
+    if (reduceMotion) {
+      setStep(SHOWN)
+      return
+    }
     if (step >= SHOWN) return // done — hold final state
     const t = window.setTimeout(() => setStep((s) => s + 1), STEP_MS)
     return () => window.clearTimeout(t)
-  }, [step])
+  }, [step, reduceMotion])
 
   const done = step >= SHOWN
   const regions = done ? [] : DEMO_AGENTS[step].regions

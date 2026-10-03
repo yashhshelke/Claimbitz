@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { motion, useMotionValue, useTransform, animate } from 'framer-motion'
+import { motion, useMotionValue, useTransform, animate, useReducedMotion } from 'framer-motion'
 import { cn } from '../../lib/utils'
 
 /**
@@ -12,15 +12,22 @@ export function RiskRing({ value, size = 96, tone = 'success' }) {
   const progress = useMotionValue(0)
   const dash = useTransform(progress, (p) => `${(p / 100) * circumference} ${circumference}`)
 
+  const reduceMotion = useReducedMotion()
+
   const stroke =
     tone === 'destructive' ? 'var(--color-destructive)' :
     tone === 'warning' ? 'var(--color-warning)' :
     'var(--color-success)'
 
   useEffect(() => {
+    // Reduced motion: set the gauge to its final value instantly.
+    if (reduceMotion) {
+      progress.set(value)
+      return
+    }
     const controls = animate(progress, value, { duration: 1.2, ease: 'easeOut' })
     return () => controls.stop()
-  }, [value, progress])
+  }, [value, progress, reduceMotion])
 
   return (
     <svg width={size} height={size} className="-rotate-90" aria-hidden="true">
@@ -43,10 +50,12 @@ export function RiskRing({ value, size = 96, tone = 'success' }) {
  * AnimatedPercent — counts up to `value` and renders "N%".
  */
 export function AnimatedPercent({ value, className, active = true }) {
-  const [display, setDisplay] = useState(active ? 0 : value)
+  const reduceMotion = useReducedMotion()
+  const [display, setDisplay] = useState(active && !reduceMotion ? 0 : value)
 
   useEffect(() => {
-    if (!active) {
+    // Reduced motion (or inactive): show the final value with no count-up.
+    if (!active || reduceMotion) {
       setDisplay(value)
       return
     }
@@ -56,7 +65,7 @@ export function AnimatedPercent({ value, className, active = true }) {
       onUpdate: (v) => setDisplay(Math.round(v)),
     })
     return () => controls.stop()
-  }, [value, active])
+  }, [value, active, reduceMotion])
 
   return <span className={cn('tabular-nums', className)}>{display}%</span>
 }

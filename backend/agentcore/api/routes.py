@@ -7,9 +7,12 @@ escalation management and health checks.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, UploadFile, File
+
+logger = logging.getLogger(__name__)
 
 from ..protocol import AgentRole, ClaimStage, new_id
 from .deps import get_supervisor_dep, get_blackboard_dep
@@ -254,11 +257,23 @@ async def process_file_upload(file: UploadFile = File(...)) -> dict:
     supervisor = get_supervisor_dep()
     claim_id = new_id()
 
-    state = await supervisor.process_claim(
-        claim_id=claim_id,
-        raw_text=raw_text,
-        file_meta={"filename": file.filename, "size_kb": len(content) // 1024},
-    )
+    try:
+        state = await supervisor.process_claim(
+            claim_id=claim_id,
+            raw_text=raw_text,
+            file_meta={"filename": file.filename, "size_kb": len(content) // 1024},
+        )
+    except HTTPException:
+        # Already a safe, intentional HTTP error — let it propagate unchanged.
+        raise
+    except Exception:
+        # Log the full exception server-side for debugging, but never leak
+        # stack traces, provider details, or internal messages to the client.
+        logger.exception("Claim processing pipeline failed for claim_id=%s", claim_id)
+        raise HTTPException(
+            status_code=502,
+            detail="Claim processing failed. Please try again.",
+        )
 
     # Build frontend-compatible response
     extracted = getattr(state, "_extracted_claim", {})

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AnimatePresence, motion, useInView } from 'framer-motion'
+import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion'
 import {
   AlertTriangle, ArrowRight, CheckCircle2, FileText, Send,
   ShieldAlert, ShieldCheck, UserCheck,
@@ -18,9 +18,15 @@ function useOnce() {
 }
 
 function CountUp({ to, decimals = 0, active }) {
+  const reduceMotion = useReducedMotion()
   const [v, setV] = useState(0)
   useEffect(() => {
     if (!active) return
+    // Reduced motion: skip the animated count and show the final value.
+    if (reduceMotion) {
+      setV(to)
+      return
+    }
     let raf = 0
     const start = performance.now()
     const tick = (now) => {
@@ -30,7 +36,7 @@ function CountUp({ to, decimals = 0, active }) {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [to, active])
+  }, [to, active, reduceMotion])
   return <span className="tabular-nums">{v.toFixed(decimals)}</span>
 }
 
@@ -148,14 +154,17 @@ function Box({ id, on, label, children }) {
 }
 
 function ClaimAnatomy() {
+  const reduceMotion = useReducedMotion()
   const [idx, setIdx] = useState(0)
   const [hover, setHover] = useState(null)
   const [ref, inView] = useOnce()
   useEffect(() => {
-    if (!inView || hover !== null) return
+    // Reduced motion: no auto-cycling. Hover/focus still switches the active
+    // agent, so the section stays fully usable.
+    if (reduceMotion || !inView || hover !== null) return
     const t = window.setInterval(() => setIdx((i) => (i + 1) % ANATOMY.length), 2200)
     return () => window.clearInterval(t)
-  }, [inView, hover])
+  }, [inView, hover, reduceMotion])
   const cur = hover ?? idx
   const on = (r) => ANATOMY[cur].regions.includes(r)
 
@@ -243,11 +252,17 @@ const EVIDENCE = [
 ]
 
 function DelayedPercent({ value, delay }) {
+  const reduceMotion = useReducedMotion()
   const [go, setGo] = useState(false)
   useEffect(() => {
+    // Reduced motion: reveal immediately without the staggered delay.
+    if (reduceMotion) {
+      setGo(true)
+      return
+    }
     const t = window.setTimeout(() => setGo(true), delay * 1000)
     return () => window.clearTimeout(t)
-  }, [delay])
+  }, [delay, reduceMotion])
   return go ? <AnimatedPercent value={value} /> : <span className="text-subtle-foreground">··</span>
 }
 
