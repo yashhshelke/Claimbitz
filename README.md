@@ -1,7 +1,6 @@
 # ClaimBlitz — Enterprise Multi-Agent Medical Insurance Claim Processor
 
 > **9 specialized AI agents** collaborate in real-time to process medical insurance claims — extracting data, validating codes, detecting fraud, assessing risk, debating disagreements, and delivering explainable approve/reject decisions in under 30 seconds.
-
 ---
 ## Table of Contents
 
